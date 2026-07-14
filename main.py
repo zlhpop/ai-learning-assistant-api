@@ -1,7 +1,8 @@
 import os
 import sqlite3
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, File, HTTPException, UploadFile
+from rag import add_document, get_document_status
 from openai import OpenAI
 from pydantic import BaseModel
 
@@ -179,3 +180,20 @@ def show_history(session_id: str):
         "会话 ID": session_id,
         "聊天记录": get_history(session_id, limit=50),
     }
+
+@app.post("/documents/upload", summary="上传知识库文档")
+async def upload_document(file: UploadFile = File(...)):
+    try:
+        content = await file.read()
+        return add_document(file.filename, content)
+
+    except ValueError as error:
+        raise HTTPException(
+            status_code=400,
+            detail=str(error),
+        ) from error
+
+
+@app.get("/documents", summary="查看知识库状态")
+def show_documents():
+    return get_document_status()
