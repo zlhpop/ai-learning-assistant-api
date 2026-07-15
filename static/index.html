@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WorkBuddy AI 学习助手</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+
+<body>
+    <div class="app">
+        <aside class="sidebar">
+            <header class="brand">
+                <div class="brand-mark">W</div>
+
+                <div>
+                    <h1>WorkBuddy</h1>
+                    <p>AI 学习助手</p>
+                </div>
+            </header>
+
+            <section class="knowledge-section">
+                <div class="section-heading">
+                    <h2>知识库</h2>
+                    <span id="document-count">0 个文档</span>
+                </div>
+
+                <label class="upload-area" for="document-input">
+                    <strong>上传学习资料</strong>
+                    <span>支持 TXT 和 PDF</span>
+                </label>
+
+                <input
+                    id="document-input"
+                    type="file"
+                    accept=".txt,.pdf"
+                    hidden
+                >
+
+                <div id="upload-status" class="upload-status"></div>
+
+                <div id="document-list" class="document-list">
+                    <p class="empty-state">暂时没有文档</p>
+                </div>
+            </section>
+
+            <button id="reset-button" class="secondary-button" type="button">
+                清空当前对话
+            </button>
+        </aside>
+
+        <main class="chat-panel">
+            <header class="chat-header">
+                <div>
+                    <h2>知识库问答</h2>
+                    <p id="connection-status">正在连接服务...</p>
+                </div>
+
+                <a class="docs-link" href="/docs" target="_blank">
+                    API 文档
+                </a>
+            </header>
+
+            <section id="message-list" class="message-list">
+                <article class="message assistant-message">
+                    <div class="message-role">AI 助手</div>
+
+                    <div class="message-content">
+                        你好，我可以根据知识库中的资料回答你的问题。
+                    </div>
+                </article>
+            </section>
+
+            <section id="source-panel" class="source-panel" hidden>
+                <div class="source-heading">
+                    <h3>引用来源</h3>
+                    <button id="close-sources" type="button">关闭</button>
+                </div>
+
+                <div id="source-list"></div>
+            </section>
+
+            <footer class="composer">
+                <div class="composer-box">
+                    <textarea
+                        id="message-input"
+                        rows="1"
+                        placeholder="输入你想询问的问题"
+                    ></textarea>
+
+                    <button id="send-button" type="button">
+                        发送
+                    </button>
+                </div>
+
+                <p>回答由 AI 生成，请结合原始资料判断。</p>
+            </footer>
+        </main>
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>
