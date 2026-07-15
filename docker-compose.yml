@@ -1,0 +1,20 @@
+services:
+  workbuddy:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: workbuddy-rag
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      DATABASE_PATH: /app/data/chat_history.db
+      CHROMA_DIRECTORY: /app/data/chroma_db
+      HF_HOME: /app/data/huggingface
+    volumes:
+      - workbuddy-data:/app/data
+    restart: unless-stopped
+
+volumes:
+  workbuddy-data:

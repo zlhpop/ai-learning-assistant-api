@@ -1,3 +1,4 @@
+import os
 from hashlib import sha256
 from io import BytesIO
 from pathlib import Path
@@ -7,7 +8,16 @@ from pypdf import PdfReader
 from sentence_transformers import SentenceTransformer
 
 
-DATABASE_DIRECTORY = Path(__file__).resolve().parent / "chroma_db"
+DEFAULT_DATABASE_DIRECTORY = (
+    Path(__file__).resolve().parent / "chroma_db"
+)
+
+DATABASE_DIRECTORY = Path(
+    os.getenv(
+        "CHROMA_DIRECTORY",
+        str(DEFAULT_DATABASE_DIRECTORY),
+    )
+)
 
 embedding_model = SentenceTransformer("BAAI/bge-small-zh-v1.5")
 

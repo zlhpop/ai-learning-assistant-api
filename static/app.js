@@ -262,6 +262,29 @@ async function resetConversation() {
     }
 }
 
+async function loadHistory() {
+    try {
+        const data = await requestJson(
+            `/history/${encodeURIComponent(sessionId)}`
+        );
+
+        const history = data["聊天记录"];
+
+        if (!history || history.length === 0) {
+            return;
+        }
+
+        messageList.replaceChildren();
+
+        for (const message of history) {
+            createMessage(message.role, message.content);
+        }
+    } catch (error) {
+        console.error("加载聊天记录失败：", error);
+    }
+}
+
+
 
 async function checkConnection() {
     try {
@@ -313,4 +336,5 @@ messageInput.addEventListener("input", () => {
 
 checkConnection();
 loadDocuments();
+loadHistory();
 messageInput.focus();
