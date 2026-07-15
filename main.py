@@ -25,8 +25,15 @@ app.mount(
     name="static",
 )
 
-DATABASE_PATH = "chat_history.db"
+DATABASE_PATH = os.getenv(
+    "DATABASE_PATH",
+    "chat_history.db",
+)
 
+Path(DATABASE_PATH).parent.mkdir(
+    parents=True,
+    exist_ok=True,
+)
 
 def init_database():
     with sqlite3.connect(DATABASE_PATH) as connection:

@@ -1,0 +1,15 @@
+.git
+.github
+.venv
+.vscode
+__pycache__
+.pytest_cache
+tests
+docs
+.env
+*.pyc
+*.pyo
+*.db
+chroma_db
+docker-data
+README.md
