@@ -1,7 +1,10 @@
 import os
 import sqlite3
+from pathlib import Path
 from dotenv import load_dotenv
 from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from rag import add_document, get_document_status, search_documents
 from openai import OpenAI
 from pydantic import BaseModel
@@ -12,6 +15,14 @@ app = FastAPI(
     title="AI 学习助手 API",
     description="一个接入 DeepSeek 大模型的学习助手。",
     version="0.4.0",
+)
+
+STATIC_DIRECTORY = Path(__file__).resolve().parent / "static"
+
+app.mount(
+    "/static",
+    StaticFiles(directory=STATIC_DIRECTORY),
+    name="static",
 )
 
 DATABASE_PATH = "chat_history.db"
@@ -113,8 +124,13 @@ class RAGChatRequest(BaseModel):
     top_k: int = 3
 
 
-@app.get("/", summary="查看服务状态")
-def home():
+@app.get("/", include_in_schema=False)
+def web_app():
+    return FileResponse(STATIC_DIRECTORY / "index.html")
+
+
+@app.get("/health", summary="查看服务状态")
+def health():
     return {"message": "AI 学习助手已启动"}
 
 
