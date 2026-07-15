@@ -25,8 +25,12 @@
 - 返回引用文件、片段编号和匹配分数
 - 使用 SQLite 保存多轮聊天记录
 - 使用 `session_id` 隔离不同会话
+- 网页刷新后自动恢复聊天记录
 - 提供知识库上传、问答和来源展示网页
-- 自动生成 Swagger API 文档
+- 提供 Swagger API 文档
+- 使用 pytest 完成 API 自动化测试
+- 支持 Docker Compose 一键部署
+- 使用 Docker Volume 持久化数据
 
 ## 技术栈
 
@@ -42,6 +46,9 @@
 | 文档解析 | PyPDF |
 | 前端 | HTML、CSS、JavaScript |
 | API 文档 | Swagger UI |
+| 自动化测试 | pytest |
+| 容器化部署 | Docker、Docker Compose |
+| 版本管理 | Git、GitHub |
 
 ## 系统流程
 
@@ -69,17 +76,25 @@ flowchart LR
 │   └── style.css
 ├── sample_docs/
 │   └── rag_intro.txt
+├── tests/
+│   └── test_api.py
+├── docs/
+│   └── images/
+├── .dockerignore
 ├── .env
 ├── .gitignore
+├── docker-compose.yml
+├── Dockerfile
 ├── main.py
 ├── rag.py
 ├── README.md
+├── requirements-prod.txt
 └── requirements.txt
 ```
 
-`.env`、SQLite 数据库和 Chroma 本地数据不会提交到 GitHub。
+`.env`、SQLite 数据库、Chroma 数据和 Python 虚拟环境不会提交到 GitHub。
 
-## 安装项目
+## 本地安装
 
 推荐使用 Python 3.12。
 
@@ -110,21 +125,83 @@ python -m pip install -r requirements.txt
 DEEPSEEK_API_KEY=你的_DeepSeek_API_Key
 ```
 
-请勿将真实 API Key 上传到 GitHub。
+请勿将真实 API Key 写入 README 或上传到 GitHub。
 
-## 启动项目
+### 5. 启动项目
 
 ```powershell
 python -m uvicorn main:app --reload
 ```
 
-启动后访问：
+首次启动时需要加载 Embedding 模型，等待时间可能稍长。
+
+## Docker 部署
+
+安装 Docker Desktop，并确保 Docker Engine 正常运行。
+
+### 1. 配置环境变量
+
+在项目根目录创建 `.env` 文件：
+
+```env
+DEEPSEEK_API_KEY=你的_DeepSeek_API_Key
+```
+
+### 2. 构建并启动服务
+
+```powershell
+docker compose up -d --build
+```
+
+Docker 镜像使用 CPU 版 PyTorch，不需要安装 CUDA。
+
+### 3. 查看容器状态
+
+```powershell
+docker compose ps
+```
+
+### 4. 查看运行日志
+
+```powershell
+docker compose logs -f --tail 100
+```
+
+按 `Ctrl+C` 可以退出日志查看，不会停止容器。
+
+### 5. 停止容器
+
+```powershell
+docker compose down
+```
+
+该命令不会删除持久化数据。
+
+### 6. 删除容器和持久化数据
+
+```powershell
+docker compose down -v
+```
+
+> 注意：该命令会永久删除 Docker 中的聊天记录、知识库和模型数据。
+
+## 访问地址
+
+服务启动后访问：
 
 - 聊天网页：http://127.0.0.1:8000
 - Swagger 文档：http://127.0.0.1:8000/docs
 - 健康检查：http://127.0.0.1:8000/health
 
-首次启动时需要加载 Embedding 模型，等待时间可能稍长。
+## 数据持久化
+
+项目使用 Docker Volume 持久化保存：
+
+- SQLite 聊天记录
+- Chroma 向量知识库
+- Hugging Face Embedding 模型
+
+即使执行 `docker compose down` 并重新创建容器，聊天记录和知识库仍然存在。
 
 ## API 接口
 
@@ -159,20 +236,47 @@ python -m uvicorn main:app --reload
 - 文档片段编号
 - 语义匹配分数
 
+## 自动化测试
+
+安装测试依赖：
+
+```powershell
+python -m pip install pytest
+```
+
+运行测试：
+
+```powershell
+python -m pytest -v
+```
+
+当前测试覆盖：
+
+- 健康检查
+- 网页访问
+- 知识库状态
+- 会话清空
+- 不支持的文件类型
+- RAG 请求参数验证
+
 ## 项目亮点
 
-- 从文档上传到回答生成，实现完整 RAG 数据链路
+- 实现从文档上传到回答生成的完整 RAG 数据链路
 - 使用中文 Embedding 模型实现语义检索
-- 使用 Chroma 持久化保存向量数据
-- 通过来源信息提高回答的可追溯性
+- 使用 Chroma 持久化保存向量知识库
+- 通过引用来源提高回答的可追溯性
 - 使用 SQLite 实现多轮会话记忆
 - 同时提供 REST API 和可视化聊天页面
+- 使用 pytest 完成 API 自动化测试
+- 使用 Docker Compose 实现一键部署
+- 使用 Docker Volume 持久化聊天记录、向量数据和模型
+- 使用健康检查监控容器运行状态
 - 使用 Git 分支和 Pull Request 管理功能开发
 
 ## 后续计划
 
 - 增加文档删除与知识库管理
 - 增加流式回答
-- 增加自动化测试
-- 增加 Docker 部署
+- 增加用户登录和会话管理
 - 增加 Agent 工具调用能力
+- 部署到云服务器并提供在线演示
