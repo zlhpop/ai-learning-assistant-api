@@ -1,10 +1,24 @@
+from hashlib import sha256
 from io import BytesIO
 from pathlib import Path
 
+import chromadb
 from pypdf import PdfReader
+from sentence_transformers import SentenceTransformer
 
 
-knowledge_chunks = []
+DATABASE_DIRECTORY = Path(__file__).resolve().parent / "chroma_db"
+
+embedding_model = SentenceTransformer("BAAI/bge-small-zh-v1.5")
+
+chroma_client = chromadb.PersistentClient(
+    path=str(DATABASE_DIRECTORY),
+)
+
+knowledge_collection = chroma_client.get_or_create_collection(
+    name="knowledge_base",
+    metadata={"hnsw:space": "cosine"},
+)
 
 
 def split_text(text, chunk_size=500, overlap=100):
@@ -42,6 +56,7 @@ def extract_text(filename, content):
 
     raise ValueError("目前只支持 TXT 和 PDF 文件。")
 
+
 def add_document(filename, content):
     text = extract_text(filename, content).strip()
 
@@ -50,27 +65,38 @@ def add_document(filename, content):
 
     chunks = split_text(text)
 
-    # 再次上传同名文件时，先删除旧片段，避免重复
-    knowledge_chunks[:] = [
-        item
-        for item in knowledge_chunks
-        if item["filename"] != filename
-    ]
+    knowledge_collection.delete(
+        where={"filename": filename},
+    )
+
+    embeddings = embedding_model.encode(
+        chunks,
+        normalize_embeddings=True,
+    ).tolist()
+
+    ids = []
+    metadatas = []
 
     for index, chunk in enumerate(chunks):
-        knowledge_chunks.append(
+        chunk_id = sha256(
+            f"{filename}-{index}".encode("utf-8")
+        ).hexdigest()
+
+        ids.append(chunk_id)
+
+        metadatas.append(
             {
                 "filename": filename,
                 "chunk_id": index,
-                "text": chunk,
             }
         )
 
-    return {
-        "文件名": filename,
-        "文字数量": len(text),
-        "片段数量": len(chunks),
-    }
+    knowledge_collection.add(
+        ids=ids,
+        documents=chunks,
+        embeddings=embeddings,
+        metadatas=metadatas,
+    )
 
     return {
         "文件名": filename,
@@ -80,59 +106,66 @@ def add_document(filename, content):
 
 
 def get_document_status():
+    stored_data = knowledge_collection.get(
+        include=["metadatas"],
+    )
+
+    metadatas = stored_data.get("metadatas") or []
+
     filenames = sorted(
-        {item["filename"] for item in knowledge_chunks}
+        {
+            metadata["filename"]
+            for metadata in metadatas
+            if metadata and "filename" in metadata
+        }
     )
 
     return {
         "文档列表": filenames,
-        "片段总数": len(knowledge_chunks),
+        "片段总数": knowledge_collection.count(),
     }
 
 
-# 本次新增：把文本转换成连续两个字符组成的关键词集合
-def create_terms(text):
-    normalized = "".join(
-        character.lower()
-        for character in text
-        if character.isalnum()
+def search_documents(query, top_k=3):
+    if not query.strip():
+        return []
+
+    total_chunks = knowledge_collection.count()
+
+    if total_chunks == 0:
+        return []
+
+    query_embedding = embedding_model.encode(
+        query,
+        normalize_embeddings=True,
+    ).tolist()
+
+    search_result = knowledge_collection.query(
+        query_embeddings=[query_embedding],
+        n_results=min(top_k, total_chunks),
+        include=["documents", "metadatas", "distances"],
     )
 
-    if len(normalized) < 2:
-        return {normalized} if normalized else set()
+    documents = search_result["documents"][0]
+    metadatas = search_result["metadatas"][0]
+    distances = search_result["distances"][0]
 
-    return {
-        normalized[index:index + 2]
-        for index in range(len(normalized) - 1)
-    }
-
-
-# 本次新增：根据关键词重合程度检索相关文档片段
-def search_documents(query, top_k=3):
-    query_terms = create_terms(query)
     results = []
 
-    if not query_terms:
-        return results
+    for document, metadata, distance in zip(
+        documents,
+        metadatas,
+        distances,
+    ):
+        score = max(0.0, 1.0 - distance)
 
-    for item in knowledge_chunks:
-        chunk_terms = create_terms(item["text"])
-        matched_terms = query_terms & chunk_terms
-        score = len(matched_terms) / len(query_terms)
+        results.append(
+            {
+                "filename": metadata["filename"],
+                "chunk_id": metadata["chunk_id"],
+                "text": document,
+                "score": round(score, 4),
+            }
+        )
 
-        if score > 0:
-            results.append(
-                {
-                    "filename": item["filename"],
-                    "chunk_id": item["chunk_id"],
-                    "text": item["text"],
-                    "score": round(score, 4),
-                }
-            )
-
-    results.sort(
-        key=lambda item: item["score"],
-        reverse=True,
-    )
-
-    return results[:top_k]
+    return results
